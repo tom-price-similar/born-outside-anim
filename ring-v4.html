@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DD Monogram</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    width: 100%; height: 100%;
+  }
+  body {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: url('BG.jpg') no-repeat center center / cover fixed;
+    overflow: hidden;
+  }
+  .stage {
+    width: 355px;
+    height: 341px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  svg#canvas { width: 100%; height: 100%; }
+</style>
+</head>
+<body>
+<div class="stage">
+  <svg id="canvas" viewBox="0 0 710 681" xmlns="http://www.w3.org/2000/svg"></svg>
+</div>
+
+<script>
+const SVG_NS = 'http://www.w3.org/2000/svg';
+const canvas = document.getElementById('canvas');
+
+const CX = 354.813, CY = 340.426;
+const SRX = 353.4, SRY = 339.0;
+const DEG = Math.PI / 180;
+
+const OUTER_BASE = [0, 0, 1];
+const nz0 = 0.282, r0 = Math.sqrt(1 - nz0*nz0), phi0 = 64.5 * DEG;
+const DIAG_BASE = [-r0*Math.sin(phi0), r0*Math.cos(phi0), nz0];
+
+const STROKE_W = 3;
+
+let oDashZAngle = 0;
+let cDashZAngle = 0;
+let cSolidZAngle = 0;
+let dashOffsets = { oDash: 0, cDash: 0 };
+
+// V4 preset — hardcoded
+const state = {
+  oSolidX: 0, oSolidY: 0, oSolidZ: 0,
+  cSolidZSpn: 0, cSolidX: 0, cSolidY: 0, cSolidZ: 1, cSolidFill: 1,
+  cSolidPPOn: 0, cSolidPPMin: -30, cSolidPPMax: 30, cSolidPPSpd: 0.5, cSolidPPEase: 'easeInOut',
+  maskOffX: 0, maskOffY: 0, maskScaleRX: 1, maskScaleRY: 1, maskRotOff: 0,
+  oDashSpd: -0.3, oDashZSpn: 0, oDashX: 48, oDashY: -10, oDashZTlt: 73, oDashLen: 21, oDashGap: 28,
+  cDashSpd: 0.3,  cDashZSpn: 0, cDashX: -31, cDashY: 17, cDashZTlt: 99, cDashLen: 21, cDashGap: 28,
+};
+
+function rotXn(n, a) { const c=Math.cos(a),s=Math.sin(a); return [n[0],n[1]*c-n[2]*s,n[1]*s+n[2]*c]; }
+function rotYn(n, a) { const c=Math.cos(a),s=Math.sin(a); return [n[0]*c+n[2]*s,n[1],-n[0]*s+n[2]*c]; }
+function rotZn(n, a) { const c=Math.cos(a),s=Math.sin(a); return [n[0]*c-n[1]*s,n[0]*s+n[1]*c,n[2]]; }
+function normV(n) { const l=Math.sqrt(n[0]*n[0]+n[1]*n[1]+n[2]*n[2]); return [n[0]/l,n[1]/l,n[2]/l]; }
+
+function computeNormal(base, xDeg, yDeg, zTiltDeg, zSpinRad) {
+  let n = [...base];
+  n = rotXn(n, xDeg * DEG);
+  n = rotYn(n, yDeg * DEG);
+  n = rotZn(n, zTiltDeg * DEG);
+  n = rotZn(n, zSpinRad);
+  return normV(n);
+}
+
+function projectRing(normal) {
+  const nx=normal[0], ny=normal[1], nz=normal[2];
+  const s = Math.sqrt(nx*nx + ny*ny);
+  let ux, uy, vx, vy;
+  if (s > 0.001) {
+    ux=ny/s; uy=-nx/s;
+    vx=nz*nx/s; vy=nz*ny/s;
+  } else {
+    ux=1; uy=0; vx=0; vy=nz>0?1:-1;
+  }
+  const m11=SRX*ux, m12=SRX*vx, m21=SRY*uy, m22=SRY*vy;
+  const a=m11*m11+m12*m12, b=m11*m21+m12*m22, c=m21*m21+m22*m22;
+  const trace=a+c, det=a*c-b*b;
+  const disc=Math.sqrt(Math.max(0,trace*trace/4-det));
+  const l1=trace/2+disc, l2=trace/2-disc;
+  let angle;
+  if (Math.abs(b)>0.0001) angle=Math.atan2(l1-a,b);
+  else angle=a>=c?0:Math.PI/2;
+  return { rx:Math.sqrt(l1), ry:Math.sqrt(Math.max(0,l2)), angle:angle*180/Math.PI };
+}
+
+let els = {};
+
+function buildSVG() {
+  canvas.innerHTML = '';
+  const defs = document.createElementNS(SVG_NS, 'defs');
+
+  const mask = document.createElementNS(SVG_NS, 'mask');
+  mask.setAttribute('id', 'centerMask');
+  mask.setAttribute('maskUnits', 'userSpaceOnUse');
+  mask.setAttribute('maskContentUnits', 'userSpaceOnUse');
+  mask.setAttribute('x', '0'); mask.setAttribute('y', '0');
+  mask.setAttribute('width', '710'); mask.setAttribute('height', '681');
+  const maskRect = document.createElementNS(SVG_NS, 'rect');
+  maskRect.setAttribute('x', '0'); maskRect.setAttribute('y', '0');
+  maskRect.setAttribute('width', '710'); maskRect.setAttribute('height', '681');
+  maskRect.setAttribute('fill', 'white');
+  mask.appendChild(maskRect);
+  els.maskEllipse = document.createElementNS(SVG_NS, 'ellipse');
+  els.maskEllipse.setAttribute('fill', 'black');
+  mask.appendChild(els.maskEllipse);
+  defs.appendChild(mask);
+
+  const boundsClip = document.createElementNS(SVG_NS, 'clipPath');
+  boundsClip.setAttribute('id', 'sphereBounds');
+  els.boundsEllipse = document.createElementNS(SVG_NS, 'ellipse');
+  boundsClip.appendChild(els.boundsEllipse);
+  defs.appendChild(boundsClip);
+
+  canvas.appendChild(defs);
+
+  els.oSolid = makeEl('#fff', 'none');
+  els.oDash  = makeEl('#fff', 'none', true, state.oDashLen, state.oDashGap);
+  els.cDash  = makeEl('#fff', 'none', true, state.cDashLen, state.cDashGap);
+
+  const oDashGroup = document.createElementNS(SVG_NS, 'g');
+  oDashGroup.setAttribute('clip-path', 'url(#sphereBounds)');
+  oDashGroup.setAttribute('mask', 'url(#centerMask)');
+  canvas.removeChild(els.oDash);
+  oDashGroup.appendChild(els.oDash);
+  canvas.appendChild(oDashGroup);
+
+  const cDashGroup = document.createElementNS(SVG_NS, 'g');
+  cDashGroup.setAttribute('clip-path', 'url(#sphereBounds)');
+  cDashGroup.setAttribute('mask', 'url(#centerMask)');
+  canvas.removeChild(els.cDash);
+  cDashGroup.appendChild(els.cDash);
+  canvas.appendChild(cDashGroup);
+
+  els.cSolid = makeEl('#fff', 'none');
+}
+
+function makeEl(stroke, fill, dashed, dl, dg) {
+  const el = document.createElementNS(SVG_NS, 'ellipse');
+  el.setAttribute('fill', fill);
+  el.setAttribute('stroke', stroke);
+  el.setAttribute('stroke-width', STROKE_W);
+  if (dashed) {
+    el.setAttribute('stroke-linecap', 'round');
+    el.setAttribute('stroke-dasharray', `${dl} ${dg}`);
+  }
+  canvas.appendChild(el);
+  return el;
+}
+
+function setProj(el, proj) {
+  el.setAttribute('cx', CX);
+  el.setAttribute('cy', CY);
+  el.setAttribute('rx', proj.rx);
+  el.setAttribute('ry', proj.ry);
+  el.setAttribute('transform', `rotate(${proj.angle} ${CX} ${CY})`);
+}
+
+let lastTime = 0;
+function animate(timestamp) {
+  if (!lastTime) lastTime = timestamp;
+  const dt = Math.min((timestamp - lastTime) / 1000, 0.1);
+  lastTime = timestamp;
+
+  oDashZAngle += state.oDashZSpn * 0.5 * dt;
+  cDashZAngle += state.cDashZSpn * 0.5 * dt;
+  cSolidZAngle += state.cSolidZSpn * 0.5 * dt;
+
+  dashOffsets.oDash += state.oDashSpd * 60 * dt;
+  dashOffsets.cDash += state.cDashSpd * 60 * dt;
+  const oPeriod = state.oDashLen + state.oDashGap;
+  const cPeriod = state.cDashLen + state.cDashGap;
+  if (oPeriod > 0) dashOffsets.oDash = ((dashOffsets.oDash % oPeriod) + oPeriod) % oPeriod;
+  if (cPeriod > 0) dashOffsets.cDash = ((dashOffsets.cDash % cPeriod) + cPeriod) % cPeriod;
+
+  const oSolidN = computeNormal(OUTER_BASE, state.oSolidX, state.oSolidY, state.oSolidZ, 0);
+  const oDashN  = computeNormal(OUTER_BASE, state.oDashX, state.oDashY, state.oDashZTlt, oDashZAngle);
+  const cSolidN = computeNormal(DIAG_BASE, state.cSolidX, state.cSolidY, state.cSolidZ, cSolidZAngle);
+  const cDashN  = computeNormal(DIAG_BASE, state.cDashX, state.cDashY, state.cDashZTlt, cDashZAngle);
+
+  const oSolidProj = projectRing(oSolidN);
+  setProj(els.oSolid, oSolidProj);
+  setProj(els.boundsEllipse, oSolidProj);
+
+  setProj(els.oDash, projectRing(oDashN));
+  els.oDash.setAttribute('stroke-dasharray', `${state.oDashLen} ${state.oDashGap}`);
+  els.oDash.setAttribute('stroke-dashoffset', dashOffsets.oDash);
+
+  setProj(els.cDash, projectRing(cDashN));
+  els.cDash.setAttribute('stroke-dasharray', `${state.cDashLen} ${state.cDashGap}`);
+  els.cDash.setAttribute('stroke-dashoffset', dashOffsets.cDash);
+
+  const cSolidProj = projectRing(cSolidN);
+  setProj(els.cSolid, cSolidProj);
+  els.cSolid.setAttribute('fill', 'none');
+
+  const maskProj = {
+    rx: cSolidProj.rx * state.maskScaleRX,
+    ry: cSolidProj.ry * state.maskScaleRY,
+    angle: cSolidProj.angle + state.maskRotOff
+  };
+  els.maskEllipse.setAttribute('cx', CX + state.maskOffX);
+  els.maskEllipse.setAttribute('cy', CY + state.maskOffY);
+  els.maskEllipse.setAttribute('rx', maskProj.rx);
+  els.maskEllipse.setAttribute('ry', maskProj.ry);
+  els.maskEllipse.setAttribute('transform', `rotate(${maskProj.angle} ${CX + state.maskOffX} ${CY + state.maskOffY})`);
+  els.maskEllipse.setAttribute('fill-opacity', state.cSolidFill);
+
+  requestAnimationFrame(animate);
+}
+
+buildSVG();
+requestAnimationFrame(animate);
+</script>
+</body>
+</html>

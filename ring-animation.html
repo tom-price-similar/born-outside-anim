@@ -13,9 +13,9 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    background: url('BG.jpg') no-repeat center center / cover fixed;
+    background: #000;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    color: #222;
+    color: #ddd;
   }
 
   .stage {
@@ -49,8 +49,9 @@
 
   .preset-btn {
     padding: 6px 12px;
-    border: 2px solid #222;
-    background: white;
+    border: 2px solid #888;
+    background: transparent;
+    color: #ddd;
     cursor: pointer;
     font-size: 12px;
     font-weight: 500;
@@ -58,8 +59,8 @@
     border-radius: 4px;
   }
 
-  .preset-btn:hover { background: #222; color: white; }
-  .preset-btn.active { background: #222; color: white; }
+  .preset-btn:hover { background: #ddd; color: #000; }
+  .preset-btn.active { background: #ddd; color: #000; }
 
   .section-label {
     font-size: 10px;
@@ -86,7 +87,7 @@
 
   .control-row input[type="range"] {
     flex: 1;
-    accent-color: #222;
+    accent-color: #ddd;
     height: 16px;
   }
 
@@ -126,7 +127,7 @@
     cursor: pointer;
   }
 
-  .bg-toggle button.active { border-color: #222; border-width: 3px; }
+  .bg-toggle button.active { border-color: #ddd; border-width: 3px; }
   .bg-light { background: #f5f5f5; }
   .bg-dark { background: #111; }
   .bg-white { background: #fff; }
@@ -151,15 +152,16 @@
     align-items: center;
     gap: 4px;
     padding: 4px 10px;
-    border: 1.5px solid #999;
-    background: white;
+    border: 1.5px solid #666;
+    background: transparent;
+    color: #ddd;
     border-radius: 4px;
     font-size: 11px;
     cursor: pointer;
     transition: all 0.15s;
   }
 
-  .saved-preset:hover { border-color: #222; }
+  .saved-preset:hover { border-color: #ddd; }
   .saved-preset .del { opacity: 0.3; font-size: 13px; margin-left: 2px; }
   .saved-preset .del:hover { opacity: 1; color: #c00; }
 
@@ -168,8 +170,9 @@
 
   .save-btn {
     padding: 6px 14px;
-    border: 2px solid #222;
-    background: white;
+    border: 2px solid #888;
+    background: transparent;
+    color: #ddd;
     cursor: pointer;
     font-size: 11px;
     font-weight: 600;
@@ -177,15 +180,15 @@
     transition: all 0.2s;
   }
 
-  .save-btn:hover { background: #222; color: white; }
+  .save-btn:hover { background: #ddd; color: #000; }
   body.dark .save-btn { border-color: #eee; background: transparent; color: #eee; }
   body.dark .save-btn:hover { background: #eee; color: #111; }
 
   .download-btn {
     padding: 10px 24px;
     border: none;
-    background: #222;
-    color: white;
+    background: #ddd;
+    color: #000;
     cursor: pointer;
     font-size: 13px;
     font-weight: 600;
@@ -294,7 +297,7 @@
       </div>
       <div class="control-row">
         <label>Easing</label>
-        <select data-key="cSolidPPEase" style="flex:1;font-size:11px;padding:2px 4px;">
+        <select data-key="cSolidPPEase" style="flex:1;font-size:11px;padding:2px 4px;background:#222;color:#ddd;border:1px solid #666;border-radius:3px;">
           <option value="linear">Linear</option>
           <option value="easeInOut" selected>Ease In-Out</option>
           <option value="easeIn">Ease In</option>
@@ -344,8 +347,18 @@
       <div class="section-label">Outer Dashed</div>
       <div class="control-row">
         <label>Dash Spd</label>
-        <input type="range" data-key="oDashSpd" min="-3" max="3" step="0.1" value="-0.3">
-        <span class="val">-0.3</span>
+        <input type="range" data-key="oDashSpd" min="-3" max="3" step="0.1" value="0">
+        <span class="val">0</span>
+      </div>
+      <div class="control-row">
+        <label>X Spin</label>
+        <input type="range" data-key="oDashXSpn" min="-2" max="2" step="0.05" value="0">
+        <span class="val">0</span>
+      </div>
+      <div class="control-row">
+        <label>Y Spin</label>
+        <input type="range" data-key="oDashYSpn" min="-2" max="2" step="0.05" value="0">
+        <span class="val">0</span>
       </div>
       <div class="control-row">
         <label>Z Spin</label>
@@ -354,18 +367,18 @@
       </div>
       <div class="control-row">
         <label>X Tilt</label>
-        <input type="range" data-key="oDashX" min="-90" max="90" step="1" value="48">
-        <span class="val">48&deg;</span>
+        <input type="range" data-key="oDashX" min="-90" max="90" step="1" value="0">
+        <span class="val">0&deg;</span>
       </div>
       <div class="control-row">
         <label>Y Tilt</label>
-        <input type="range" data-key="oDashY" min="-90" max="90" step="1" value="-10">
-        <span class="val">-10&deg;</span>
+        <input type="range" data-key="oDashY" min="-90" max="90" step="1" value="0">
+        <span class="val">0&deg;</span>
       </div>
       <div class="control-row">
         <label>Z Tilt</label>
-        <input type="range" data-key="oDashZTlt" min="-180" max="180" step="1" value="73">
-        <span class="val">73&deg;</span>
+        <input type="range" data-key="oDashZTlt" min="-180" max="180" step="1" value="0">
+        <span class="val">0&deg;</span>
       </div>
       <div class="control-row">
         <label>Dash</label>
@@ -384,8 +397,18 @@
       <div class="section-label">Centre Dashed</div>
       <div class="control-row">
         <label>Dash Spd</label>
-        <input type="range" data-key="cDashSpd" min="-3" max="3" step="0.1" value="0.3">
-        <span class="val">0.3</span>
+        <input type="range" data-key="cDashSpd" min="-3" max="3" step="0.1" value="0">
+        <span class="val">0</span>
+      </div>
+      <div class="control-row">
+        <label>X Spin</label>
+        <input type="range" data-key="cDashXSpn" min="-2" max="2" step="0.05" value="0">
+        <span class="val">0</span>
+      </div>
+      <div class="control-row">
+        <label>Y Spin</label>
+        <input type="range" data-key="cDashYSpn" min="-2" max="2" step="0.05" value="0">
+        <span class="val">0</span>
       </div>
       <div class="control-row">
         <label>Z Spin</label>
@@ -394,18 +417,18 @@
       </div>
       <div class="control-row">
         <label>X Tilt</label>
-        <input type="range" data-key="cDashX" min="-90" max="90" step="1" value="-31">
-        <span class="val">-31&deg;</span>
+        <input type="range" data-key="cDashX" min="-90" max="90" step="1" value="0">
+        <span class="val">0&deg;</span>
       </div>
       <div class="control-row">
         <label>Y Tilt</label>
-        <input type="range" data-key="cDashY" min="-90" max="90" step="1" value="17">
-        <span class="val">17&deg;</span>
+        <input type="range" data-key="cDashY" min="-90" max="90" step="1" value="0">
+        <span class="val">0&deg;</span>
       </div>
       <div class="control-row">
         <label>Z Tilt</label>
-        <input type="range" data-key="cDashZTlt" min="-180" max="180" step="1" value="99">
-        <span class="val">99&deg;</span>
+        <input type="range" data-key="cDashZTlt" min="-180" max="180" step="1" value="0">
+        <span class="val">0&deg;</span>
       </div>
       <div class="control-row">
         <label>Dash</label>
@@ -454,10 +477,14 @@ const DIAG_BASE = [-r0*Math.sin(phi0), r0*Math.cos(phi0), nz0];
 let isDark = false;
 const STROKE_W = 3; // fixed weight for all rings
 
-// Z spin accumulators (radians)
+// Spin accumulators (radians)
 let oDashZAngle = 0;
 let cDashZAngle = 0;
 let cSolidZAngle = 0;
+let oDashXAngle = 0;
+let cDashXAngle = 0;
+let oDashYAngle = 0;
+let cDashYAngle = 0;
 
 let dashOffsets = { oDash: 0, cDash: 0 };
 
@@ -470,8 +497,8 @@ let state = {
   cSolidZSpn: 0, cSolidX: 0, cSolidY: 0, cSolidZ: 0, cSolidFill: 1,
   cSolidPPOn: 0, cSolidPPMin: -30, cSolidPPMax: 30, cSolidPPSpd: 0.5, cSolidPPEase: 'easeInOut',
   maskOffX: 0, maskOffY: 0, maskScaleRX: 1, maskScaleRY: 1, maskRotOff: 0,
-  oDashSpd: -0.3, oDashZSpn: 0, oDashX: 48, oDashY: -10, oDashZTlt: 73, oDashLen: 21, oDashGap: 28,
-  cDashSpd: 0.3, cDashZSpn: 0, cDashX: -31, cDashY: 17, cDashZTlt: 99, cDashLen: 21, cDashGap: 28,
+  oDashSpd: 0, oDashXSpn: 0, oDashYSpn: 0, oDashZSpn: 0, oDashX: 0, oDashY: 0, oDashZTlt: 0, oDashLen: 21, oDashGap: 28,
+  cDashSpd: 0, cDashXSpn: 0, cDashYSpn: 0, cDashZSpn: 0, cDashX: 0, cDashY: 0, cDashZTlt: 0, cDashLen: 21, cDashGap: 28,
 };
 
 const PRESET_KEYS = Object.keys(state);
@@ -482,21 +509,21 @@ const MASK_DEFAULTS = { maskOffX:0, maskOffY:0, maskScaleRX:1, maskScaleRY:1, ma
 const PRESETS = [
   // V1
   { oSolidX:0,oSolidY:0,oSolidZ:0, cSolidZSpn:0,cSolidX:0,cSolidY:0,cSolidZ:1,cSolidFill:1, ...PP_DEFAULTS, ...MASK_DEFAULTS,
-    oDashSpd:-0.7,oDashZSpn:0,oDashX:48,oDashY:-10,oDashZTlt:79,oDashLen:26,oDashGap:30,
-    cDashSpd:-0.8,cDashZSpn:0,cDashX:-31,cDashY:17,cDashZTlt:108,cDashLen:26,cDashGap:30 },
+    oDashSpd:-0.7,oDashXSpn:0,oDashYSpn:0,oDashZSpn:0,oDashX:48,oDashY:-10,oDashZTlt:79,oDashLen:26,oDashGap:30,
+    cDashSpd:-0.8,cDashXSpn:0,cDashYSpn:0,cDashZSpn:0,cDashX:-31,cDashY:17,cDashZTlt:108,cDashLen:26,cDashGap:30 },
   // V2
   { oSolidX:0,oSolidY:0,oSolidZ:0, cSolidZSpn:0,cSolidX:0,cSolidY:0,cSolidZ:1,cSolidFill:1, ...PP_DEFAULTS, ...MASK_DEFAULTS,
-    oDashSpd:-0.7,oDashZSpn:0,oDashX:48,oDashY:-10,oDashZTlt:73,oDashLen:26,oDashGap:30,
-    cDashSpd:-0.8,cDashZSpn:0,cDashX:-31,cDashY:17,cDashZTlt:99,cDashLen:26,cDashGap:30 },
+    oDashSpd:-0.7,oDashXSpn:0,oDashYSpn:0,oDashZSpn:0,oDashX:48,oDashY:-10,oDashZTlt:73,oDashLen:26,oDashGap:30,
+    cDashSpd:-0.8,cDashXSpn:0,cDashYSpn:0,cDashZSpn:0,cDashX:-31,cDashY:17,cDashZTlt:99,cDashLen:26,cDashGap:30 },
   // V4
   { oSolidX:0,oSolidY:0,oSolidZ:0, cSolidZSpn:0,cSolidX:0,cSolidY:0,cSolidZ:1,cSolidFill:1, ...PP_DEFAULTS, ...MASK_DEFAULTS,
-    oDashSpd:-0.3,oDashZSpn:0,oDashX:48,oDashY:-10,oDashZTlt:73,oDashLen:21,oDashGap:28,
-    cDashSpd:0.3,cDashZSpn:0,cDashX:-31,cDashY:17,cDashZTlt:99,cDashLen:21,cDashGap:28 },
+    oDashSpd:-0.3,oDashXSpn:0,oDashYSpn:0,oDashZSpn:0,oDashX:48,oDashY:-10,oDashZTlt:73,oDashLen:21,oDashGap:28,
+    cDashSpd:0.3,cDashXSpn:0,cDashYSpn:0,cDashZSpn:0,cDashX:-31,cDashY:17,cDashZTlt:99,cDashLen:21,cDashGap:28 },
   // V5 Spinning
   { oSolidX:0,oSolidY:0,oSolidZ:0, cSolidZSpn:0,cSolidX:17,cSolidY:-18.34,cSolidZ:1,cSolidFill:1,
     cSolidPPOn:1,cSolidPPMin:-37,cSolidPPMax:-17,cSolidPPSpd:0.5,cSolidPPEase:'easeInOut', ...MASK_DEFAULTS,
-    oDashSpd:-0.3,oDashZSpn:0,oDashX:46,oDashY:-2,oDashZTlt:73,oDashLen:21,oDashGap:28,
-    cDashSpd:0.3,cDashZSpn:0,cDashX:-31,cDashY:18,cDashZTlt:99,cDashLen:21,cDashGap:28 },
+    oDashSpd:-0.3,oDashXSpn:0,oDashYSpn:0,oDashZSpn:0,oDashX:46,oDashY:-2,oDashZTlt:73,oDashLen:21,oDashGap:28,
+    cDashSpd:0.3,cDashXSpn:0,cDashYSpn:0,cDashZSpn:0,cDashX:-31,cDashY:18,cDashZTlt:99,cDashLen:21,cDashGap:28 },
 ];
 
 // 3D helpers
@@ -505,13 +532,15 @@ function rotYn(n, a) { const c=Math.cos(a),s=Math.sin(a); return [n[0]*c+n[2]*s,
 function rotZn(n, a) { const c=Math.cos(a),s=Math.sin(a); return [n[0]*c-n[1]*s,n[0]*s+n[1]*c,n[2]]; }
 function normV(n) { const l=Math.sqrt(n[0]*n[0]+n[1]*n[1]+n[2]*n[2]); return [n[0]/l,n[1]/l,n[2]/l]; }
 
-// Compute normal from base + static X/Y/Z tilt (degrees) + accumulated Z spin (radians)
-function computeNormal(base, xDeg, yDeg, zTiltDeg, zSpinRad) {
+// Compute normal from base + static X/Y/Z tilt (degrees) + accumulated spins (radians)
+function computeNormal(base, xDeg, yDeg, zTiltDeg, zSpinRad, xSpinRad, ySpinRad) {
   let n = [...base];
   n = rotXn(n, xDeg * DEG);
   n = rotYn(n, yDeg * DEG);
   n = rotZn(n, zTiltDeg * DEG); // static Z tilt
-  n = rotZn(n, zSpinRad);       // continuous Z spin
+  if (xSpinRad) n = rotXn(n, xSpinRad); // continuous X spin
+  if (ySpinRad) n = rotYn(n, ySpinRad); // continuous Y spin
+  if (zSpinRad) n = rotZn(n, zSpinRad); // continuous Z spin
   return normV(n);
 }
 
@@ -672,7 +701,11 @@ function animate(timestamp) {
   const dt = Math.min((timestamp - lastTime) / 1000, 0.1);
   lastTime = timestamp;
 
-  // Advance Z spin angles (continuous)
+  // Advance spin angles (continuous)
+  oDashXAngle += state.oDashXSpn * 0.5 * dt;
+  cDashXAngle += state.cDashXSpn * 0.5 * dt;
+  oDashYAngle += state.oDashYSpn * 0.5 * dt;
+  cDashYAngle += state.cDashYSpn * 0.5 * dt;
   oDashZAngle += state.oDashZSpn * 0.5 * dt;
   cDashZAngle += state.cDashZSpn * 0.5 * dt;
   cSolidZAngle += state.cSolidZSpn * 0.5 * dt;
@@ -701,11 +734,11 @@ function animate(timestamp) {
   if (oPeriod > 0) dashOffsets.oDash = ((dashOffsets.oDash % oPeriod) + oPeriod) % oPeriod;
   if (cPeriod > 0) dashOffsets.cDash = ((dashOffsets.cDash % cPeriod) + cPeriod) % cPeriod;
 
-  // Compute normals
+  // Compute normals — X spin applied via 3D normal, Z spin applied as 2D post-projection
   const oSolidN = computeNormal(OUTER_BASE, state.oSolidX, state.oSolidY, state.oSolidZ, 0);
-  const oDashN  = computeNormal(OUTER_BASE, state.oDashX, state.oDashY, state.oDashZTlt, oDashZAngle);
+  const oDashN  = computeNormal(OUTER_BASE, state.oDashX, state.oDashY, state.oDashZTlt, 0, oDashXAngle, oDashYAngle);
   const cSolidN = computeNormal(DIAG_BASE, state.cSolidX, state.cSolidY, state.cSolidZ, cSolidZAngle);
-  const cDashN  = computeNormal(DIAG_BASE, state.cDashX, state.cDashY, state.cDashZTlt, cDashZAngle);
+  const cDashN  = computeNormal(DIAG_BASE, state.cDashX, state.cDashY, state.cDashZTlt, 0, cDashXAngle, cDashYAngle);
 
   // Update SVG
   const oSolidProj = projectRing(oSolidN);
@@ -713,11 +746,16 @@ function animate(timestamp) {
   // Keep sphere bounds clip in sync with outer solid
   setProj(els.boundsEllipse, oSolidProj);
 
-  setProj(els.oDash, projectRing(oDashN));
+  // Dashed rings: apply Z spin as 2D rotation on the projected ellipse (spins in place)
+  const oDashProj = projectRing(oDashN);
+  oDashProj.angle += oDashZAngle / DEG; // add accumulated spin in degrees
+  setProj(els.oDash, oDashProj);
   els.oDash.setAttribute('stroke-dasharray', `${state.oDashLen} ${state.oDashGap}`);
   els.oDash.setAttribute('stroke-dashoffset', dashOffsets.oDash);
 
-  setProj(els.cDash, projectRing(cDashN));
+  const cDashProj = projectRing(cDashN);
+  cDashProj.angle += cDashZAngle / DEG; // add accumulated spin in degrees
+  setProj(els.cDash, cDashProj);
   els.cDash.setAttribute('stroke-dasharray', `${state.cDashLen} ${state.cDashGap}`);
   els.cDash.setAttribute('stroke-dashoffset', dashOffsets.cDash);
 
@@ -783,6 +821,10 @@ function applyPreset(i) {
   }
   syncAllSliders();
   // Reset accumulators
+  oDashXAngle = 0;
+  cDashXAngle = 0;
+  oDashYAngle = 0;
+  cDashYAngle = 0;
   oDashZAngle = 0;
   cDashZAngle = 0;
   cSolidZAngle = 0;
@@ -961,7 +1003,7 @@ document.getElementById('savePresetBtn').addEventListener('click', () => {
 });
 
 renderSavedPresets();
-applyPreset(2); // V4
+// Start with all values at defaults (zeroed out) — no preset applied
 buildSVG();
 requestAnimationFrame(animate);
 </script>

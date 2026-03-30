@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ring V6 – Globe Spin</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: #000;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    color: #ddd;
+  }
+
+  .stage {
+    width: 520px;
+    height: 520px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 20px 0;
+  }
+
+  svg#canvas { width: 100%; height: 100%; }
+
+  .controls {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 16px;
+    max-width: 520px;
+    width: 100%;
+  }
+
+  .section-label {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    opacity: 0.5;
+    margin-top: 4px;
+    align-self: flex-start;
+  }
+
+  .control-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    width: 100%;
+  }
+
+  .control-row label {
+    min-width: 80px;
+    font-size: 11px;
+  }
+
+  .control-row input[type="range"] {
+    flex: 1;
+    accent-color: #ddd;
+    height: 16px;
+  }
+
+  .control-row .val {
+    min-width: 40px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    font-size: 11px;
+    opacity: 0.6;
+  }
+
+  .ring-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px 24px;
+    width: 100%;
+  }
+
+  .ring-col {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  h1 {
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    margin-top: 24px;
+  }
+
+  .save-btn {
+    padding: 6px 14px;
+    border: 2px solid #888;
+    background: transparent;
+    color: #ddd;
+    cursor: pointer;
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: 4px;
+    transition: all 0.2s;
+  }
+
+  .save-btn:hover { background: #ddd; color: #000; }
+
+  .saved-presets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    justify-content: center;
+    width: 100%;
+    min-height: 20px;
+  }
+
+  .saved-preset {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border: 1.5px solid #666;
+    background: transparent;
+    color: #ddd;
+    border-radius: 4px;
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .saved-preset:hover { border-color: #ddd; }
+  .saved-preset .del { opacity: 0.3; font-size: 13px; margin-left: 2px; }
+  .saved-preset .del:hover { opacity: 1; color: #c00; }
+</style>
+</head>
+<body>
+
+<h1>Ring V6 – Globe Spin</h1>
+
+<div class="stage">
+  <svg id="canvas" viewBox="0 0 710 681" xmlns="http://www.w3.org/2000/svg"></svg>
+</div>
+
+<div class="controls">
+  <div class="ring-grid">
+    <div class="ring-col">
+      <div class="section-label">Outer Solid</div>
+      <div class="control-row">
+        <label>Longitude</label>
+        <input type="range" data-key="oSolidLon" min="-180" max="180" step="1" value="0">
+        <span class="val">0&deg;</span>
+      </div>
+      <div class="control-row">
+        <label>Spin Speed</label>
+        <input type="range" data-key="oSolidSpn" min="-2" max="2" step="0.05" value="0.4">
+        <span class="val">0.4</span>
+      </div>
+    </div>
+
+    <div class="ring-col">
+      <div class="section-label">Centre Solid</div>
+      <div class="control-row">
+        <label>Longitude</label>
+        <input type="range" data-key="cSolidLon" min="-180" max="180" step="1" value="90">
+        <span class="val">90&deg;</span>
+      </div>
+      <div class="control-row">
+        <label>Spin Speed</label>
+        <input type="range" data-key="cSolidSpn" min="-2" max="2" step="0.05" value="0.4">
+        <span class="val">0.4</span>
+      </div>
+      <div class="control-row">
+        <label>Swing</label>
+        <input type="range" data-key="cSolidAmp" min="10" max="90" step="1" value="40">
+        <span class="val">40&deg;</span>
+      </div>
+      <div class="control-row">
+        <label>Mask</label>
+        <input type="range" data-key="cSolidMask" min="0" max="1" step="1" value="1">
+        <span class="val">On</span>
+      </div>
+    </div>
+
+    <div class="ring-col">
+      <div class="section-label">Outer Dashed</div>
+      <div class="control-row">
+        <label>Longitude</label>
+        <input type="range" data-key="oDashLon" min="-180" max="180" step="1" value="45">
+        <span class="val">45&deg;</span>
+      </div>
+      <div class="control-row">
+        <label>Latitude</label>
+        <input type="range" data-key="oDashLat" min="-90" max="90" step="1" value="0">
+        <span class="val">0&deg;</span>
+      </div>
+      <div class="control-row">
+        <label>Spin Speed</label>
+        <input type="range" data-key="oDashSpn" min="-2" max="2" step="0.05" value="0.4">
+        <span class="val">0.4</span>
+      </div>
+      <div class="control-row">
+        <label>Dash</label>
+        <input type="range" data-key="oDashLen" min="1" max="100" step="1" value="4">
+        <span class="val">4</span>
+      </div>
+      <div class="control-row">
+        <label>Gap</label>
+        <input type="range" data-key="oDashGap" min="1" max="80" step="1" value="4">
+        <span class="val">4</span>
+      </div>
+    </div>
+
+    <div class="ring-col">
+      <div class="section-label">Centre Dashed</div>
+      <div class="control-row">
+        <label>Longitude</label>
+        <input type="range" data-key="cDashLon" min="-180" max="180" step="1" value="0">
+        <span class="val">0&deg;</span>
+      </div>
+      <div class="control-row">
+        <label>Latitude</label>
+        <input type="range" data-key="cDashLat" min="-90" max="90" step="1" value="90">
+        <span class="val">90&deg;</span>
+      </div>
+      <div class="control-row">
+        <label>Spin Speed</label>
+        <input type="range" data-key="cDashSpn" min="-2" max="2" step="0.05" value="0.4">
+        <span class="val">0.4</span>
+      </div>
+      <div class="control-row">
+        <label>Dash</label>
+        <input type="range" data-key="cDashLen" min="1" max="100" step="1" value="4">
+        <span class="val">4</span>
+      </div>
+      <div class="control-row">
+        <label>Gap</label>
+        <input type="range" data-key="cDashGap" min="1" max="80" step="1" value="4">
+        <span class="val">4</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-label" style="margin-top:8px">Globe Axis</div>
+  <div class="control-row">
+    <label>Tilt X</label>
+    <input type="range" data-key="axisTiltX" min="-90" max="90" step="1" value="0">
+    <span class="val">0&deg;</span>
+  </div>
+  <div class="control-row">
+    <label>Tilt Z</label>
+    <input type="range" data-key="axisTiltZ" min="-90" max="90" step="1" value="-23">
+    <span class="val">-23&deg;</span>
+  </div>
+
+  <div class="section-label" style="margin-top:8px">Saved Presets</div>
+  <div class="saved-presets" id="savedPresets"></div>
+  <div style="display:flex;gap:8px;margin-top:4px">
+    <button class="save-btn" id="savePresetBtn">Save Current</button>
+    <button class="save-btn" id="copyStateBtn">Copy Settings</button>
+  </div>
+</div>
+
+<script>
+const SVG_NS = 'http://www.w3.org/2000/svg';
+const canvas = document.getElementById('canvas');
+
+const CX = 354.813, CY = 340.426;
+const SRX = 353.4, SRY = 339.0;
+const DEG = Math.PI / 180;
+const STROKE_W = 3;
+
+// State: each ring has a longitude (degrees) and spin speed
+// The globe axis can be tilted
+let state = {
+  axisTiltX: 0, axisTiltZ: -23,
+  oSolidLon: 0,   oSolidSpn: 0.4,
+  cSolidLon: 90,  cSolidSpn: 0.4, cSolidAmp: 40, cSolidMask: 1,
+  oDashLon: 45,  oDashLat: 0,   oDashSpn: 0.4,  oDashLen: 4, oDashGap: 4,
+  cDashLon: 0, cDashLat: 90,  cDashSpn: 0.4,  cDashLen: 4, cDashGap: 4,
+};
+
+const STATE_KEYS = Object.keys(state);
+
+// Spin accumulators (added to longitude each frame)
+let spinAccum = { oSolid: 0, cSolid: 0, oDash: 0, cDash: 0 };
+
+// 3D rotation helpers
+function rotX(n, a) { const c=Math.cos(a),s=Math.sin(a); return [n[0], n[1]*c-n[2]*s, n[1]*s+n[2]*c]; }
+function rotY(n, a) { const c=Math.cos(a),s=Math.sin(a); return [n[0]*c+n[2]*s, n[1], -n[0]*s+n[2]*c]; }
+function rotZ(n, a) { const c=Math.cos(a),s=Math.sin(a); return [n[0]*c-n[1]*s, n[0]*s+n[1]*c, n[2]]; }
+function norm(n) { const l=Math.hypot(...n); return [n[0]/l, n[1]/l, n[2]/l]; }
+
+// Compute a ring's frame: normal + stable basis vectors (u, v).
+// By rotating the initial basis through the same chain, the basis is
+// always continuous — no singularity switching.
+function ringFrame(lonDeg, latDeg, axisTiltXDeg, axisTiltZDeg) {
+  // Start: ring in XY plane, normal along Z
+  let n = [0, 0, 1];
+  let u = [1, 0, 0];
+  let v = [0, 1, 0];
+
+  const latR = latDeg * DEG;
+  const lonR = lonDeg * DEG;
+  const axR  = axisTiltXDeg * DEG;
+  const azR  = axisTiltZDeg * DEG;
+
+  // Apply same rotation chain to all three vectors
+  n = rotX(n, latR); u = rotX(u, latR); v = rotX(v, latR);
+  n = rotY(n, lonR); u = rotY(u, lonR); v = rotY(v, lonR);
+  n = rotX(n, axR);  u = rotX(u, axR);  v = rotX(v, axR);
+  n = rotZ(n, azR);  u = rotZ(u, azR);  v = rotZ(v, azR);
+
+  return { normal: n, ux: u[0], uy: u[1], uz: u[2], vx: v[0], vy: v[1], vz: v[2] };
+}
+
+// Project ring frame to 2D ellipse parameters
+function projectRing(frame) {
+  const { ux, uy, vx, vy } = frame;
+
+  const m11=SRX*ux, m12=SRX*vx, m21=SRY*uy, m22=SRY*vy;
+  const a=m11*m11+m12*m12, b=m11*m21+m12*m22, c=m21*m21+m22*m22;
+  const trace=a+c, det=a*c-b*b;
+  const disc=Math.sqrt(Math.max(0, trace*trace/4-det));
+  const l1=trace/2+disc, l2=trace/2-disc;
+
+  let angle;
+  if (Math.abs(b)>0.0001) angle=Math.atan2(l1-a, b);
+  else angle=a>=c?0:Math.PI/2;
+
+  return { rx:Math.sqrt(l1), ry:Math.sqrt(Math.max(0,l2)), angle:angle*180/Math.PI };
+}
+
+// SVG elements
+let els = {};
+
+// Build an SVG path for a dashed ring using fixed 3D angular positions.
+// Uses the ring's frame (u, v basis vectors) for stable projection.
+function buildDashPath(frame, dashDeg, gapDeg) {
+  const { ux, uy, vx, vy } = frame;
+  const stepDeg = dashDeg + gapDeg;
+  const numDashes = Math.floor(360 / stepDeg);
+  const segments = [];
+  const STEPS_PER_DASH = 16;
+
+  for (let i = 0; i < numDashes; i++) {
+    const startDeg = i * stepDeg;
+    const endDeg = startDeg + dashDeg;
+    let d = '';
+    for (let j = 0; j <= STEPS_PER_DASH; j++) {
+      const t = (startDeg + (endDeg - startDeg) * j / STEPS_PER_DASH) * DEG;
+      const cosT = Math.cos(t), sinT = Math.sin(t);
+      const px = ux * cosT + vx * sinT;
+      const py = uy * cosT + vy * sinT;
+      const x = CX + px * SRX;
+      const y = CY + py * SRY;
+      d += (j === 0 ? 'M' : 'L') + x.toFixed(2) + ',' + y.toFixed(2);
+    }
+    segments.push(d);
+  }
+  return segments.join(' ');
+}
+
+function buildSVG() {
+  canvas.innerHTML = '';
+  const stroke = '#fff';
+
+  // Defs: mask (centre solid hides dashed behind it)
+  const defs = document.createElementNS(SVG_NS, 'defs');
+
+  const mask = document.createElementNS(SVG_NS, 'mask');
+  mask.setAttribute('id', 'centerMask');
+  mask.setAttribute('maskUnits', 'userSpaceOnUse');
+  mask.setAttribute('x', '0'); mask.setAttribute('y', '0');
+  mask.setAttribute('width', '710'); mask.setAttribute('height', '681');
+  const maskRect = document.createElementNS(SVG_NS, 'rect');
+  maskRect.setAttribute('x','0'); maskRect.setAttribute('y','0');
+  maskRect.setAttribute('width','710'); maskRect.setAttribute('height','681');
+  maskRect.setAttribute('fill','white');
+  mask.appendChild(maskRect);
+  els.maskEllipse = document.createElementNS(SVG_NS, 'ellipse');
+  els.maskEllipse.setAttribute('fill', 'black');
+  mask.appendChild(els.maskEllipse);
+  defs.appendChild(mask);
+
+  canvas.appendChild(defs);
+
+  // Outer solid
+  els.oSolid = makeSolidEl(stroke);
+
+  // Outer dashed (masked by centre solid only) — now a <path>
+  els.oDashG = document.createElementNS(SVG_NS, 'g');
+  els.oDashG.setAttribute('mask', 'url(#centerMask)');
+  els.oDash = makeDashEl(stroke);
+  els.oDashG.appendChild(els.oDash);
+  canvas.appendChild(els.oDashG);
+
+  // Centre dashed (masked by centre solid only) — now a <path>
+  els.cDashG = document.createElementNS(SVG_NS, 'g');
+  els.cDashG.setAttribute('mask', 'url(#centerMask)');
+  els.cDash = makeDashEl(stroke);
+  els.cDashG.appendChild(els.cDash);
+  canvas.appendChild(els.cDashG);
+
+  // Centre solid (on top)
+  els.cSolid = makeSolidEl(stroke);
+}
+
+function makeSolidEl(stroke) {
+  const el = document.createElementNS(SVG_NS, 'ellipse');
+  el.setAttribute('fill', 'none');
+  el.setAttribute('stroke', stroke);
+  el.setAttribute('stroke-width', STROKE_W);
+  canvas.appendChild(el);
+  return el;
+}
+
+function makeDashEl(stroke) {
+  const el = document.createElementNS(SVG_NS, 'path');
+  el.setAttribute('fill', 'none');
+  el.setAttribute('stroke', stroke);
+  el.setAttribute('stroke-width', STROKE_W);
+  el.setAttribute('stroke-linecap', 'round');
+  return el;
+}
+
+function setProj(el, proj) {
+  el.setAttribute('cx', CX);
+  el.setAttribute('cy', CY);
+  el.setAttribute('rx', proj.rx);
+  el.setAttribute('ry', proj.ry);
+  el.setAttribute('transform', `rotate(${proj.angle} ${CX} ${CY})`);
+}
+
+// Animation
+let lastTime = 0;
+function animate(timestamp) {
+  if (!lastTime) lastTime = timestamp;
+  const dt = Math.min((timestamp - lastTime) / 1000, 0.1);
+  lastTime = timestamp;
+
+  // Advance spin accumulators
+  spinAccum.oSolid += state.oSolidSpn * 30 * dt;
+  spinAccum.cSolid += state.cSolidSpn * 30 * dt;
+  spinAccum.oDash  += state.oDashSpn  * 30 * dt;
+  spinAccum.cDash  += state.cDashSpn  * 30 * dt;
+
+  // Compute effective longitudes
+  const oSolidLon = state.oSolidLon + spinAccum.oSolid;
+  // Centre solid ping-pongs: use sine of accumulator, scaled by amplitude
+  const cSolidLon = state.cSolidLon + Math.sin(spinAccum.cSolid * DEG) * state.cSolidAmp;
+  const oDashLon  = state.oDashLon  + spinAccum.oDash;
+  // Centre dashed: spin accumulates as latitude rotation (up-to-down)
+  const cDashLat  = state.cDashLat  + spinAccum.cDash;
+
+  const ax = state.axisTiltX;
+  const az = state.axisTiltZ;
+
+  // Compute ring frames (normal + stable basis vectors)
+  const oSolidF = ringFrame(oSolidLon, 0, ax, az);
+  const cSolidF = ringFrame(cSolidLon, 0, ax, az);
+  const oDashF  = ringFrame(oDashLon,  state.oDashLat, ax, az);
+  const cDashF  = ringFrame(state.cDashLon, cDashLat, ax, az);
+
+  // Project and render
+  const oSolidP = projectRing(oSolidF);
+  setProj(els.oSolid, oSolidP);
+
+  // Dashed rings: build paths from fixed 3D angular positions
+  els.oDash.setAttribute('d', buildDashPath(oDashF, state.oDashLen, state.oDashGap));
+  els.cDash.setAttribute('d', buildDashPath(cDashF, state.cDashLen, state.cDashGap));
+
+  // Centre solid + mask
+  const cSolidP = projectRing(cSolidF);
+  setProj(els.cSolid, cSolidP);
+  setProj(els.maskEllipse, cSolidP);
+
+  // Toggle mask on/off
+  const maskOn = state.cSolidMask >= 1;
+  els.oDashG.setAttribute('mask', maskOn ? 'url(#centerMask)' : 'none');
+  els.cDashG.setAttribute('mask', maskOn ? 'url(#centerMask)' : 'none');
+
+  requestAnimationFrame(animate);
+}
+
+// Controls
+document.querySelectorAll('.control-row input[type="range"]').forEach(input => {
+  const key = input.dataset.key;
+  if (!key) return;
+  input.addEventListener('input', () => {
+    const val = parseFloat(input.value);
+    state[key] = val;
+    const isDeg = key.match(/Lon|Lat|TiltX|TiltZ|Amp/);
+    const isBool = key.match(/Mask$/);
+    if (isDeg) {
+      input.nextElementSibling.innerHTML = val + '&deg;';
+    } else if (isBool) {
+      input.nextElementSibling.textContent = val >= 1 ? 'On' : 'Off';
+    } else {
+      input.nextElementSibling.textContent = Number.isInteger(val) ? val : val.toFixed(1);
+    }
+  });
+});
+
+// Copy settings
+document.getElementById('copyStateBtn').addEventListener('click', () => {
+  const text = JSON.stringify(state, null, 2);
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.getElementById('copyStateBtn');
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = 'Copy Settings', 1500);
+  });
+});
+
+// Saved presets (localStorage)
+const STORAGE_KEY = 'dd-ring-v6-presets';
+
+function loadSaved() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
+  catch { return []; }
+}
+
+function saveSaved(list) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+}
+
+function renderSaved() {
+  const container = document.getElementById('savedPresets');
+  const list = loadSaved();
+  container.innerHTML = '';
+  if (list.length === 0) {
+    container.innerHTML = '<span style="opacity:0.3;font-size:11px">No saved presets yet</span>';
+    return;
+  }
+  list.forEach((p, i) => {
+    const el = document.createElement('div');
+    el.className = 'saved-preset';
+    el.innerHTML = `<span class="name">${p.name}</span><span class="del">&times;</span>`;
+    el.querySelector('.name').addEventListener('click', () => {
+      for (const key of STATE_KEYS) {
+        if (p.state[key] !== undefined) state[key] = p.state[key];
+      }
+      syncSliders();
+      spinAccum = { oSolid:0, cSolid:0, oDash:0, cDash:0 };
+    });
+    el.querySelector('.del').addEventListener('click', (e) => {
+      e.stopPropagation();
+      const all = loadSaved();
+      all.splice(i, 1);
+      saveSaved(all);
+      renderSaved();
+    });
+    container.appendChild(el);
+  });
+}
+
+function syncSliders() {
+  document.querySelectorAll('.control-row input[type="range"]').forEach(input => {
+    const key = input.dataset.key;
+    if (!key || state[key] === undefined) return;
+    input.value = state[key];
+    const isDeg = key.match(/Lon|Lat|TiltX|TiltZ|Amp/);
+    const isBool = key.match(/Mask$/);
+    if (isDeg) {
+      input.nextElementSibling.innerHTML = state[key] + '&deg;';
+    } else if (isBool) {
+      input.nextElementSibling.textContent = state[key] >= 1 ? 'On' : 'Off';
+    } else {
+      const v = state[key];
+      input.nextElementSibling.textContent = Number.isInteger(v) ? v : v.toFixed(1);
+    }
+  });
+}
+
+document.getElementById('savePresetBtn').addEventListener('click', () => {
+  const name = prompt('Preset name:');
+  if (!name) return;
+  const all = loadSaved();
+  all.push({ name, state: { ...state } });
+  saveSaved(all);
+  renderSaved();
+});
+
+renderSaved();
+buildSVG();
+requestAnimationFrame(animate);
+</script>
+
+</body>
+</html>

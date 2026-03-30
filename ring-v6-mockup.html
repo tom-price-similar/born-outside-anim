@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ring V6 – Mockup</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: url('BG.jpg') no-repeat center center / cover fixed;
+  }
+
+  .stage {
+    width: 520px;
+    height: 520px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  svg#canvas { width: 100%; height: 100%; }
+</style>
+</head>
+<body>
+
+<div class="stage">
+  <svg id="canvas" viewBox="0 0 710 681" xmlns="http://www.w3.org/2000/svg"></svg>
+</div>
+
+<script>
+const SVG_NS = 'http://www.w3.org/2000/svg';
+const canvas = document.getElementById('canvas');
+
+const CX = 354.813, CY = 340.426;
+const SRX = 353.4, SRY = 339.0;
+const DEG = Math.PI / 180;
+const STROKE_W = 3;
+
+let state = {
+  axisTiltX: 0, axisTiltZ: -23,
+  oSolidLon: 0,   oSolidSpn: 0.4,
+  cSolidLon: 90,  cSolidSpn: 0.4, cSolidAmp: 40, cSolidMask: 1,
+  oDashLon: 45,  oDashLat: 0,   oDashSpn: 0.4,  oDashLen: 4, oDashGap: 4,
+  cDashLon: 0, cDashLat: 90,  cDashSpn: 0.4,  cDashLen: 4, cDashGap: 4,
+};
+
+let spinAccum = { oSolid: 0, cSolid: 0, oDash: 0, cDash: 0 };
+
+function rotX(n, a) { const c=Math.cos(a),s=Math.sin(a); return [n[0], n[1]*c-n[2]*s, n[1]*s+n[2]*c]; }
+function rotY(n, a) { const c=Math.cos(a),s=Math.sin(a); return [n[0]*c+n[2]*s, n[1], -n[0]*s+n[2]*c]; }
+function rotZ(n, a) { const c=Math.cos(a),s=Math.sin(a); return [n[0]*c-n[1]*s, n[0]*s+n[1]*c, n[2]]; }
+function norm(n) { const l=Math.hypot(...n); return [n[0]/l, n[1]/l, n[2]/l]; }
+
+function ringFrame(lonDeg, latDeg, axisTiltXDeg, axisTiltZDeg) {
+  let n = [0, 0, 1];
+  let u = [1, 0, 0];
+  let v = [0, 1, 0];
+
+  const latR = latDeg * DEG;
+  const lonR = lonDeg * DEG;
+  const axR  = axisTiltXDeg * DEG;
+  const azR  = axisTiltZDeg * DEG;
+
+  n = rotX(n, latR); u = rotX(u, latR); v = rotX(v, latR);
+  n = rotY(n, lonR); u = rotY(u, lonR); v = rotY(v, lonR);
+  n = rotX(n, axR);  u = rotX(u, axR);  v = rotX(v, axR);
+  n = rotZ(n, azR);  u = rotZ(u, azR);  v = rotZ(v, azR);
+
+  return { normal: n, ux: u[0], uy: u[1], uz: u[2], vx: v[0], vy: v[1], vz: v[2] };
+}
+
+function projectRing(frame) {
+  const { ux, uy, vx, vy } = frame;
+
+  const m11=SRX*ux, m12=SRX*vx, m21=SRY*uy, m22=SRY*vy;
+  const a=m11*m11+m12*m12, b=m11*m21+m12*m22, c=m21*m21+m22*m22;
+  const trace=a+c, det=a*c-b*b;
+  const disc=Math.sqrt(Math.max(0, trace*trace/4-det));
+  const l1=trace/2+disc, l2=trace/2-disc;
+
+  let angle;
+  if (Math.abs(b)>0.0001) angle=Math.atan2(l1-a, b);
+  else angle=a>=c?0:Math.PI/2;
+
+  return { rx:Math.sqrt(l1), ry:Math.sqrt(Math.max(0,l2)), angle:angle*180/Math.PI };
+}
+
+let els = {};
+
+function buildDashPath(frame, dashDeg, gapDeg) {
+  const { ux, uy, vx, vy } = frame;
+  const stepDeg = dashDeg + gapDeg;
+  const numDashes = Math.floor(360 / stepDeg);
+  const segments = [];
+  const STEPS_PER_DASH = 16;
+
+  for (let i = 0; i < numDashes; i++) {
+    const startDeg = i * stepDeg;
+    const endDeg = startDeg + dashDeg;
+    let d = '';
+    for (let j = 0; j <= STEPS_PER_DASH; j++) {
+      const t = (startDeg + (endDeg - startDeg) * j / STEPS_PER_DASH) * DEG;
+      const cosT = Math.cos(t), sinT = Math.sin(t);
+      const px = ux * cosT + vx * sinT;
+      const py = uy * cosT + vy * sinT;
+      const x = CX + px * SRX;
+      const y = CY + py * SRY;
+      d += (j === 0 ? 'M' : 'L') + x.toFixed(2) + ',' + y.toFixed(2);
+    }
+    segments.push(d);
+  }
+  return segments.join(' ');
+}
+
+function buildSVG() {
+  canvas.innerHTML = '';
+  const stroke = '#fff';
+
+  const defs = document.createElementNS(SVG_NS, 'defs');
+
+  const mask = document.createElementNS(SVG_NS, 'mask');
+  mask.setAttribute('id', 'centerMask');
+  mask.setAttribute('maskUnits', 'userSpaceOnUse');
+  mask.setAttribute('x', '0'); mask.setAttribute('y', '0');
+  mask.setAttribute('width', '710'); mask.setAttribute('height', '681');
+  const maskRect = document.createElementNS(SVG_NS, 'rect');
+  maskRect.setAttribute('x','0'); maskRect.setAttribute('y','0');
+  maskRect.setAttribute('width','710'); maskRect.setAttribute('height','681');
+  maskRect.setAttribute('fill','white');
+  mask.appendChild(maskRect);
+  els.maskEllipse = document.createElementNS(SVG_NS, 'ellipse');
+  els.maskEllipse.setAttribute('fill', 'black');
+  mask.appendChild(els.maskEllipse);
+  defs.appendChild(mask);
+
+  canvas.appendChild(defs);
+
+  els.oSolid = makeSolidEl(stroke);
+
+  els.oDashG = document.createElementNS(SVG_NS, 'g');
+  els.oDashG.setAttribute('mask', 'url(#centerMask)');
+  els.oDash = makeDashEl(stroke);
+  els.oDashG.appendChild(els.oDash);
+  canvas.appendChild(els.oDashG);
+
+  els.cDashG = document.createElementNS(SVG_NS, 'g');
+  els.cDashG.setAttribute('mask', 'url(#centerMask)');
+  els.cDash = makeDashEl(stroke);
+  els.cDashG.appendChild(els.cDash);
+  canvas.appendChild(els.cDashG);
+
+  els.cSolid = makeSolidEl(stroke);
+}
+
+function makeSolidEl(stroke) {
+  const el = document.createElementNS(SVG_NS, 'ellipse');
+  el.setAttribute('fill', 'none');
+  el.setAttribute('stroke', stroke);
+  el.setAttribute('stroke-width', STROKE_W);
+  canvas.appendChild(el);
+  return el;
+}
+
+function makeDashEl(stroke) {
+  const el = document.createElementNS(SVG_NS, 'path');
+  el.setAttribute('fill', 'none');
+  el.setAttribute('stroke', stroke);
+  el.setAttribute('stroke-width', STROKE_W);
+  el.setAttribute('stroke-linecap', 'round');
+  return el;
+}
+
+function setProj(el, proj) {
+  el.setAttribute('cx', CX);
+  el.setAttribute('cy', CY);
+  el.setAttribute('rx', proj.rx);
+  el.setAttribute('ry', proj.ry);
+  el.setAttribute('transform', `rotate(${proj.angle} ${CX} ${CY})`);
+}
+
+let lastTime = 0;
+function animate(timestamp) {
+  if (!lastTime) lastTime = timestamp;
+  const dt = Math.min((timestamp - lastTime) / 1000, 0.1);
+  lastTime = timestamp;
+
+  spinAccum.oSolid += state.oSolidSpn * 30 * dt;
+  spinAccum.cSolid += state.cSolidSpn * 30 * dt;
+  spinAccum.oDash  += state.oDashSpn  * 30 * dt;
+  spinAccum.cDash  += state.cDashSpn  * 30 * dt;
+
+  const oSolidLon = state.oSolidLon + spinAccum.oSolid;
+  const cSolidLon = state.cSolidLon + Math.sin(spinAccum.cSolid * DEG) * state.cSolidAmp;
+  const oDashLon  = state.oDashLon  + spinAccum.oDash;
+  const cDashLat  = state.cDashLat  + spinAccum.cDash;
+
+  const ax = state.axisTiltX;
+  const az = state.axisTiltZ;
+
+  const oSolidF = ringFrame(oSolidLon, 0, ax, az);
+  const cSolidF = ringFrame(cSolidLon, 0, ax, az);
+  const oDashF  = ringFrame(oDashLon,  state.oDashLat, ax, az);
+  const cDashF  = ringFrame(state.cDashLon, cDashLat, ax, az);
+
+  const oSolidP = projectRing(oSolidF);
+  setProj(els.oSolid, oSolidP);
+
+  els.oDash.setAttribute('d', buildDashPath(oDashF, state.oDashLen, state.oDashGap));
+  els.cDash.setAttribute('d', buildDashPath(cDashF, state.cDashLen, state.cDashGap));
+
+  const cSolidP = projectRing(cSolidF);
+  setProj(els.cSolid, cSolidP);
+  setProj(els.maskEllipse, cSolidP);
+
+  const maskOn = state.cSolidMask >= 1;
+  els.oDashG.setAttribute('mask', maskOn ? 'url(#centerMask)' : 'none');
+  els.cDashG.setAttribute('mask', maskOn ? 'url(#centerMask)' : 'none');
+
+  requestAnimationFrame(animate);
+}
+
+buildSVG();
+requestAnimationFrame(animate);
+</script>
+
+</body>
+</html>

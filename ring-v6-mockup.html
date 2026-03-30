@@ -43,8 +43,8 @@ const STROKE_W = 3;
 
 let state = {
   axisTiltX: 0, axisTiltZ: -23,
-  oSolidLon: 0,   oSolidSpn: 0.8,
-  cSolidLon: 90,  cSolidSpn: 0.8, cSolidAmp: 40, cSolidMask: 1,
+  oSolidLon: 0,   oSolidSpn: 0,
+  cSolidLon: 90,  cSolidSpn: 0.8, cSolidAmp: 28, cSolidMask: 1,
   oDashLon: 45,  oDashLat: 0,   oDashSpn: 0.8,  oDashLen: 4, oDashGap: 4,
   cDashLon: 0, cDashLat: 90,  cDashSpn: 0.8,  cDashLen: 4, cDashGap: 4,
 };
@@ -155,16 +155,6 @@ function buildSVG() {
   canvas.appendChild(els.cDashG);
 
   els.cSolid = makeSolidEl(stroke);
-
-  // Fixed perfect circle (outermost, static)
-  const fixedCircle = document.createElementNS(SVG_NS, 'circle');
-  fixedCircle.setAttribute('cx', CX);
-  fixedCircle.setAttribute('cy', CY);
-  fixedCircle.setAttribute('r', Math.max(SRX, SRY));
-  fixedCircle.setAttribute('fill', 'none');
-  fixedCircle.setAttribute('stroke', stroke);
-  fixedCircle.setAttribute('stroke-width', STROKE_W);
-  canvas.appendChild(fixedCircle);
 }
 
 function makeSolidEl(stroke) {

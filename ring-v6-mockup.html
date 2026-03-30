@@ -42,14 +42,23 @@ const DEG = Math.PI / 180;
 const STROKE_W = 3;
 
 let state = {
-  axisTiltX: 0, axisTiltZ: -23,
+  axisTiltX: 0, axisTiltZ: -26,
   oSolidLon: 0,   oSolidSpn: 0,
-  cSolidLon: 90,  cSolidSpn: 0.8, cSolidAmp: 28, cSolidMask: 1,
-  oDashLon: 45,  oDashLat: 0,   oDashSpn: 0.8,  oDashLen: 4, oDashGap: 4,
-  cDashLon: 0, cDashLat: 90,  cDashSpn: 0.8,  cDashLen: 4, cDashGap: 4,
+  cSolidLon: 107,  cSolidSpn: 1, cSolidAmp: 20, cSolidMask: 1,
+  oDashLon: 47,  oDashLat: 1,   oDashSpn: 1,  oDashLen: 4, oDashGap: 4,
+  cDashLon: 0, cDashLat: 74,  cDashSpn: 1,  cDashLen: 4, cDashGap: 4,
 };
 
 let spinAccum = { oSolid: 0, cSolid: 0, oDash: 0, cDash: 0 };
+
+const TOTAL_LOOPS = 1;
+const TOTAL_DEG = TOTAL_LOOPS * 360;
+function easeInOutMap(accum, total) {
+  if (accum >= total) return total;
+  const t = accum / total;
+  const s = t * t * (3 - 2 * t);
+  return s * total;
+}
 
 function rotX(n, a) { const c=Math.cos(a),s=Math.sin(a); return [n[0], n[1]*c-n[2]*s, n[1]*s+n[2]*c]; }
 function rotY(n, a) { const c=Math.cos(a),s=Math.sin(a); return [n[0]*c+n[2]*s, n[1], -n[0]*s+n[2]*c]; }
@@ -92,16 +101,21 @@ function projectRing(frame) {
 
 let els = {};
 
-function buildDashPath(frame, dashDeg, gapDeg) {
-  const { ux, uy, vx, vy } = frame;
+function buildDashPaths(frame, dashDeg, gapDeg, cSolidNormal) {
+  const { ux, uy, uz, vx, vy, vz } = frame;
   const stepDeg = dashDeg + gapDeg;
   const numDashes = Math.floor(360 / stepDeg);
-  const segments = [];
+  const frontSegs = [], backSegs = [];
   const STEPS_PER_DASH = 16;
 
   for (let i = 0; i < numDashes; i++) {
     const startDeg = i * stepDeg;
     const endDeg = startDeg + dashDeg;
+    const midT = ((startDeg + endDeg) / 2) * DEG;
+    const dot = (uz * Math.cos(midT) + vz * Math.sin(midT)) * cSolidNormal[2]
+              + (ux * Math.cos(midT) + vx * Math.sin(midT)) * cSolidNormal[0]
+              + (uy * Math.cos(midT) + vy * Math.sin(midT)) * cSolidNormal[1];
+
     let d = '';
     for (let j = 0; j <= STEPS_PER_DASH; j++) {
       const t = (startDeg + (endDeg - startDeg) * j / STEPS_PER_DASH) * DEG;
@@ -112,9 +126,13 @@ function buildDashPath(frame, dashDeg, gapDeg) {
       const y = CY + py * SRY;
       d += (j === 0 ? 'M' : 'L') + x.toFixed(2) + ',' + y.toFixed(2);
     }
-    segments.push(d);
+    if (dot >= 0) {
+      frontSegs.push(d);
+    } else {
+      backSegs.push(d);
+    }
   }
-  return segments.join(' ');
+  return { front: frontSegs.join(' '), back: backSegs.join(' ') };
 }
 
 function buildSVG() {
@@ -142,19 +160,28 @@ function buildSVG() {
 
   els.oSolid = makeSolidEl(stroke);
 
-  els.oDashG = document.createElementNS(SVG_NS, 'g');
-  els.oDashG.setAttribute('mask', 'url(#centerMask)');
-  els.oDash = makeDashEl(stroke);
-  els.oDashG.appendChild(els.oDash);
-  canvas.appendChild(els.oDashG);
+  // Back-facing dashes (masked by centre solid)
+  els.oDashBackG = document.createElementNS(SVG_NS, 'g');
+  els.oDashBackG.setAttribute('mask', 'url(#centerMask)');
+  els.oDashBack = makeDashEl(stroke);
+  els.oDashBackG.appendChild(els.oDashBack);
+  canvas.appendChild(els.oDashBackG);
 
-  els.cDashG = document.createElementNS(SVG_NS, 'g');
-  els.cDashG.setAttribute('mask', 'url(#centerMask)');
-  els.cDash = makeDashEl(stroke);
-  els.cDashG.appendChild(els.cDash);
-  canvas.appendChild(els.cDashG);
+  els.cDashBackG = document.createElementNS(SVG_NS, 'g');
+  els.cDashBackG.setAttribute('mask', 'url(#centerMask)');
+  els.cDashBack = makeDashEl(stroke);
+  els.cDashBackG.appendChild(els.cDashBack);
+  canvas.appendChild(els.cDashBackG);
 
+  // Centre solid (on top of back dashes)
   els.cSolid = makeSolidEl(stroke);
+
+  // Front-facing dashes (on top of centre solid, no mask)
+  els.oDashFront = makeDashEl(stroke);
+  canvas.appendChild(els.oDashFront);
+
+  els.cDashFront = makeDashEl(stroke);
+  canvas.appendChild(els.cDashFront);
 }
 
 function makeSolidEl(stroke) {
@@ -189,15 +216,20 @@ function animate(timestamp) {
   const dt = Math.min((timestamp - lastTime) / 1000, 0.1);
   lastTime = timestamp;
 
-  spinAccum.oSolid += state.oSolidSpn * 30 * dt;
-  spinAccum.cSolid += state.cSolidSpn * 30 * dt;
-  spinAccum.oDash  += state.oDashSpn  * 30 * dt;
-  spinAccum.cDash  += state.cDashSpn  * 30 * dt;
+  if (spinAccum.oSolid < TOTAL_DEG) spinAccum.oSolid = Math.min(TOTAL_DEG, spinAccum.oSolid + Math.abs(state.oSolidSpn) * 30 * dt);
+  if (spinAccum.cSolid < TOTAL_DEG) spinAccum.cSolid = Math.min(TOTAL_DEG, spinAccum.cSolid + Math.abs(state.cSolidSpn) * 30 * dt);
+  if (spinAccum.oDash  < TOTAL_DEG) spinAccum.oDash  = Math.min(TOTAL_DEG, spinAccum.oDash  + Math.abs(state.oDashSpn)  * 30 * dt);
+  if (spinAccum.cDash  < TOTAL_DEG) spinAccum.cDash  = Math.min(TOTAL_DEG, spinAccum.cDash  + Math.abs(state.cDashSpn)  * 30 * dt);
 
-  const oSolidLon = state.oSolidLon + spinAccum.oSolid;
-  const cSolidLon = state.cSolidLon + Math.sin(spinAccum.cSolid * DEG) * state.cSolidAmp;
-  const oDashLon  = state.oDashLon  + spinAccum.oDash;
-  const cDashLat  = state.cDashLat  + spinAccum.cDash;
+  const oSolidEased = easeInOutMap(spinAccum.oSolid, TOTAL_DEG) * Math.sign(state.oSolidSpn || 1);
+  const oDashEased  = easeInOutMap(spinAccum.oDash,  TOTAL_DEG) * Math.sign(state.oDashSpn  || 1);
+  const cDashEased  = easeInOutMap(spinAccum.cDash,  TOTAL_DEG) * Math.sign(state.cDashSpn  || 1);
+  const cSolidEased = easeInOutMap(spinAccum.cSolid, TOTAL_DEG) * Math.sign(state.cSolidSpn || 1);
+
+  const oSolidLon = state.oSolidLon + oSolidEased;
+  const cSolidLon = state.cSolidLon + Math.sin(cSolidEased * DEG) * state.cSolidAmp;
+  const oDashLon  = state.oDashLon  + oDashEased;
+  const cDashLat  = state.cDashLat  + cDashEased;
 
   const ax = state.axisTiltX;
   const az = state.axisTiltZ;
@@ -210,16 +242,34 @@ function animate(timestamp) {
   const oSolidP = projectRing(oSolidF);
   setProj(els.oSolid, oSolidP);
 
-  els.oDash.setAttribute('d', buildDashPath(oDashF, state.oDashLen, state.oDashGap));
-  els.cDash.setAttribute('d', buildDashPath(cDashF, state.cDashLen, state.cDashGap));
-
   const cSolidP = projectRing(cSolidF);
   setProj(els.cSolid, cSolidP);
   setProj(els.maskEllipse, cSolidP);
 
+  const cNorm = cSolidF.normal;
+  const maxAccum = Math.max(spinAccum.oSolid, spinAccum.cSolid, spinAccum.oDash, spinAccum.cDash);
+  const pct = TOTAL_DEG > 0 ? maxAccum / TOTAL_DEG * 100 : 0;
+  const bfc = pct >= 39 && pct < 72;
+
+  if (bfc) {
+    const oDashSplit = buildDashPaths(oDashF, state.oDashLen, state.oDashGap, cNorm);
+    const cDashSplit = buildDashPaths(cDashF, state.cDashLen, state.cDashGap, cNorm);
+    els.oDashBack.setAttribute('d', oDashSplit.back);
+    els.cDashBack.setAttribute('d', cDashSplit.back);
+    els.oDashFront.setAttribute('d', oDashSplit.front);
+    els.cDashFront.setAttribute('d', cDashSplit.front);
+  } else {
+    const oAll = buildDashPaths(oDashF, state.oDashLen, state.oDashGap, cNorm);
+    const cAll = buildDashPaths(cDashF, state.cDashLen, state.cDashGap, cNorm);
+    els.oDashBack.setAttribute('d', [oAll.back, oAll.front].filter(Boolean).join(' '));
+    els.cDashBack.setAttribute('d', [cAll.back, cAll.front].filter(Boolean).join(' '));
+    els.oDashFront.setAttribute('d', '');
+    els.cDashFront.setAttribute('d', '');
+  }
+
   const maskOn = state.cSolidMask >= 1;
-  els.oDashG.setAttribute('mask', maskOn ? 'url(#centerMask)' : 'none');
-  els.cDashG.setAttribute('mask', maskOn ? 'url(#centerMask)' : 'none');
+  els.oDashBackG.setAttribute('mask', maskOn ? 'url(#centerMask)' : 'none');
+  els.cDashBackG.setAttribute('mask', maskOn ? 'url(#centerMask)' : 'none');
 
   requestAnimationFrame(animate);
 }

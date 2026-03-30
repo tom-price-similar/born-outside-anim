@@ -496,8 +496,8 @@ function animate(timestamp) {
 
   // Update progress display
   const maxAccum = Math.max(spinAccum.oSolid, spinAccum.cSolid, spinAccum.oDash, spinAccum.cDash);
-  const pct = TOTAL_DEG > 0 ? Math.round(maxAccum / TOTAL_DEG * 100) : 0;
-  document.getElementById('progressDisplay').textContent = pct + '%';
+  const pct = TOTAL_DEG > 0 ? maxAccum / TOTAL_DEG * 100 : 0;
+  document.getElementById('progressDisplay').textContent = Math.round(pct) + '%';
 
   // Compute effective longitudes
   const oSolidLon = state.oSolidLon + oSolidEased;
@@ -525,6 +525,13 @@ function animate(timestamp) {
 
   // Dashed rings: split into front/back relative to centre solid normal
   const cNorm = cSolidF.normal;
+  // Auto-change swing: smoothstep ramp from 20° to 90° over 50–60%
+  if (pct <= 50) state.cSolidAmp = 20;
+  else if (pct >= 60) state.cSolidAmp = 90;
+  else {
+    const r = (pct - 50) / 10;
+    state.cSolidAmp = 20 + 70 * r * r * (3 - 2 * r);
+  }
   // Auto-toggle BFC based on progress: on at 39%, off at 72%
   const bfc = pct >= 39 && pct < 72;
 

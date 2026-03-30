@@ -249,6 +249,12 @@ function animate(timestamp) {
   const cNorm = cSolidF.normal;
   const maxAccum = Math.max(spinAccum.oSolid, spinAccum.cSolid, spinAccum.oDash, spinAccum.cDash);
   const pct = TOTAL_DEG > 0 ? maxAccum / TOTAL_DEG * 100 : 0;
+  if (pct <= 50) state.cSolidAmp = 20;
+  else if (pct >= 60) state.cSolidAmp = 90;
+  else {
+    const r = (pct - 50) / 10;
+    state.cSolidAmp = 20 + 70 * r * r * (3 - 2 * r);
+  }
   const bfc = pct >= 39 && pct < 72;
 
   if (bfc) {

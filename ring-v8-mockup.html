@@ -51,16 +51,34 @@ let state = {
 
 let spinAccum = { oSolid: 0, cSolid: 0, oDash: 0, cDash: 0 };
 let loopCount = 0;
-const REPLAY_COUNT = 2;
+
+// ── TIMING CONFIG ──────────────────────────────
+const REPLAY_COUNT  = 5;     // how many times the animation plays
+const EASE_AMOUNT   = 0.45;  // 0 = fully linear, 1 = full smoothstep
+const SWING_DEFAULT = 70;    // swing amplitude when no section is active
+
+// Section 1 (first pass)
+const S1_BFC_ON     = 6;    // % where BFC turns on
+const S1_BFC_OFF    = 34;    // % where BFC turns off
+const S1_SWING_ON   = 10;    // % where swing starts ramping
+const S1_SWING_OFF  = 30;    // % where swing finishes ramping
+const S1_SWING_END  = 90;    // swing amplitude at end of ramp
+
+// Section 2 (second pass)
+const S2_BFC_ON     = 39;    // % where BFC turns on
+const S2_BFC_OFF    = 78;    // % where BFC turns off
+const S2_SWING_ON   = 50;    // % where swing starts ramping
+const S2_SWING_OFF  = 60;    // % where swing finishes ramping
+const S2_SWING_END  = 100;   // swing amplitude at end of ramp
+// ────────────────────────────────────────────────
 
 const TOTAL_LOOPS = 1;
 const TOTAL_DEG = TOTAL_LOOPS * 360;
-// Softened smoothstep: 90% smoothstep + 10% linear so velocity never hits zero
 function easeInOutMap(accum, total) {
   if (accum >= total) return total;
   const t = accum / total;
   const s = t * t * (3 - 2 * t);
-  return (0.85 * s + 0.15 * t) * total;
+  return (EASE_AMOUNT * s + (1 - EASE_AMOUNT) * t) * total;
 }
 
 function rotX(n, a) { const c=Math.cos(a),s=Math.sin(a); return [n[0], n[1]*c-n[2]*s, n[1]*s+n[2]*c]; }
@@ -256,13 +274,21 @@ function animate(timestamp) {
     loopCount++;
   }
 
-  if (pct <= 50) state.cSolidAmp = 20;
-  else if (pct >= 60) state.cSolidAmp = 90;
-  else {
-    const r = (pct - 50) / 10;
-    state.cSolidAmp = 20 + 70 * r * r * (3 - 2 * r);
+  // Swing: check each section, default outside both
+  function swingRamp(pct, onPct, offPct, startAmp, endAmp) {
+    if (pct <= onPct) return null;
+    if (pct >= offPct) return endAmp;
+    const r = (pct - onPct) / (offPct - onPct);
+    return startAmp + (endAmp - startAmp) * r * r * (3 - 2 * r);
   }
-  const bfc = pct >= 39 && pct < 72;
+  const s1 = swingRamp(pct, S1_SWING_ON, S1_SWING_OFF, SWING_DEFAULT, S1_SWING_END);
+  const s2 = swingRamp(pct, S2_SWING_ON, S2_SWING_OFF, SWING_DEFAULT, S2_SWING_END);
+  if (s2 !== null) state.cSolidAmp = s2;
+  else if (s1 !== null) state.cSolidAmp = s1;
+  else state.cSolidAmp = SWING_DEFAULT;
+
+  // BFC: on if inside either section's range
+  const bfc = (pct >= S1_BFC_ON && pct < S1_BFC_OFF) || (pct >= S2_BFC_ON && pct < S2_BFC_OFF);
 
   if (bfc) {
     const oDashSplit = buildDashPaths(oDashF, state.oDashLen, state.oDashGap, cNorm);

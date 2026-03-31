@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Ring V6 – Mockup</title>
+<title>Ring V7 – Mockup</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -49,16 +49,8 @@ let state = {
   cDashLon: 0, cDashLat: 74,  cDashSpn: 1,  cDashLen: 4, cDashGap: 4,
 };
 
+// Continuous spin accumulator (no cap — loops forever)
 let spinAccum = { oSolid: 0, cSolid: 0, oDash: 0, cDash: 0 };
-
-const TOTAL_LOOPS = 1;
-const TOTAL_DEG = TOTAL_LOOPS * 360;
-function easeInOutMap(accum, total) {
-  if (accum >= total) return total;
-  const t = accum / total;
-  const s = t * t * (3 - 2 * t);
-  return s * total;
-}
 
 function rotX(n, a) { const c=Math.cos(a),s=Math.sin(a); return [n[0], n[1]*c-n[2]*s, n[1]*s+n[2]*c]; }
 function rotY(n, a) { const c=Math.cos(a),s=Math.sin(a); return [n[0]*c+n[2]*s, n[1], -n[0]*s+n[2]*c]; }
@@ -216,20 +208,22 @@ function animate(timestamp) {
   const dt = Math.min((timestamp - lastTime) / 1000, 0.1);
   lastTime = timestamp;
 
-  if (spinAccum.oSolid < TOTAL_DEG) spinAccum.oSolid = Math.min(TOTAL_DEG, spinAccum.oSolid + Math.abs(state.oSolidSpn) * 30 * dt);
-  if (spinAccum.cSolid < TOTAL_DEG) spinAccum.cSolid = Math.min(TOTAL_DEG, spinAccum.cSolid + Math.abs(state.cSolidSpn) * 30 * dt);
-  if (spinAccum.oDash  < TOTAL_DEG) spinAccum.oDash  = Math.min(TOTAL_DEG, spinAccum.oDash  + Math.abs(state.oDashSpn)  * 30 * dt);
-  if (spinAccum.cDash  < TOTAL_DEG) spinAccum.cDash  = Math.min(TOTAL_DEG, spinAccum.cDash  + Math.abs(state.cDashSpn)  * 30 * dt);
+  // Linear accumulation — no cap, loops forever
+  spinAccum.oSolid += Math.abs(state.oSolidSpn) * 30 * dt;
+  spinAccum.cSolid += Math.abs(state.cSolidSpn) * 30 * dt;
+  spinAccum.oDash  += Math.abs(state.oDashSpn)  * 30 * dt;
+  spinAccum.cDash  += Math.abs(state.cDashSpn)  * 30 * dt;
 
-  const oSolidEased = easeInOutMap(spinAccum.oSolid, TOTAL_DEG) * Math.sign(state.oSolidSpn || 1);
-  const oDashEased  = easeInOutMap(spinAccum.oDash,  TOTAL_DEG) * Math.sign(state.oDashSpn  || 1);
-  const cDashEased  = easeInOutMap(spinAccum.cDash,  TOTAL_DEG) * Math.sign(state.cDashSpn  || 1);
-  const cSolidEased = easeInOutMap(spinAccum.cSolid, TOTAL_DEG) * Math.sign(state.cSolidSpn || 1);
+  // Direct linear mapping (no easing)
+  const oSolidDeg = spinAccum.oSolid * Math.sign(state.oSolidSpn || 1);
+  const oDashDeg  = spinAccum.oDash  * Math.sign(state.oDashSpn  || 1);
+  const cDashDeg  = spinAccum.cDash  * Math.sign(state.cDashSpn  || 1);
+  const cSolidDeg = spinAccum.cSolid * Math.sign(state.cSolidSpn || 1);
 
-  const oSolidLon = state.oSolidLon + oSolidEased;
-  const cSolidLon = state.cSolidLon + Math.sin(cSolidEased * DEG) * state.cSolidAmp;
-  const oDashLon  = state.oDashLon  + oDashEased;
-  const cDashLat  = state.cDashLat  + cDashEased;
+  const oSolidLon = state.oSolidLon + oSolidDeg;
+  const cSolidLon = state.cSolidLon + Math.sin(cSolidDeg * DEG) * state.cSolidAmp;
+  const oDashLon  = state.oDashLon  + oDashDeg;
+  const cDashLat  = state.cDashLat  + cDashDeg;
 
   const ax = state.axisTiltX;
   const az = state.axisTiltZ;
@@ -247,32 +241,13 @@ function animate(timestamp) {
   setProj(els.maskEllipse, cSolidP);
 
   const cNorm = cSolidF.normal;
-  const maxAccum = Math.max(spinAccum.oSolid, spinAccum.cSolid, spinAccum.oDash, spinAccum.cDash);
-  const pct = TOTAL_DEG > 0 ? maxAccum / TOTAL_DEG * 100 : 0;
 
-  if (pct <= 50) state.cSolidAmp = 20;
-  else if (pct >= 60) state.cSolidAmp = 90;
-  else {
-    const r = (pct - 50) / 10;
-    state.cSolidAmp = 20 + 70 * r * r * (3 - 2 * r);
-  }
-  const bfc = pct >= 39 && pct < 72;
-
-  if (bfc) {
-    const oDashSplit = buildDashPaths(oDashF, state.oDashLen, state.oDashGap, cNorm);
-    const cDashSplit = buildDashPaths(cDashF, state.cDashLen, state.cDashGap, cNorm);
-    els.oDashBack.setAttribute('d', oDashSplit.back);
-    els.cDashBack.setAttribute('d', cDashSplit.back);
-    els.oDashFront.setAttribute('d', oDashSplit.front);
-    els.cDashFront.setAttribute('d', cDashSplit.front);
-  } else {
-    const oAll = buildDashPaths(oDashF, state.oDashLen, state.oDashGap, cNorm);
-    const cAll = buildDashPaths(cDashF, state.cDashLen, state.cDashGap, cNorm);
-    els.oDashBack.setAttribute('d', [oAll.back, oAll.front].filter(Boolean).join(' '));
-    els.cDashBack.setAttribute('d', [cAll.back, cAll.front].filter(Boolean).join(' '));
-    els.oDashFront.setAttribute('d', '');
-    els.cDashFront.setAttribute('d', '');
-  }
+  const oAll = buildDashPaths(oDashF, state.oDashLen, state.oDashGap, cNorm);
+  const cAll = buildDashPaths(cDashF, state.cDashLen, state.cDashGap, cNorm);
+  els.oDashBack.setAttribute('d', [oAll.back, oAll.front].filter(Boolean).join(' '));
+  els.cDashBack.setAttribute('d', [cAll.back, cAll.front].filter(Boolean).join(' '));
+  els.oDashFront.setAttribute('d', '');
+  els.cDashFront.setAttribute('d', '');
 
   const maskOn = state.cSolidMask >= 1;
   els.oDashBackG.setAttribute('mask', maskOn ? 'url(#centerMask)' : 'none');

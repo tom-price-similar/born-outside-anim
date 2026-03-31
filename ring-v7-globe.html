@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Ring V6 – Globe Spin</title>
+<title>Ring V7 – Globe Spin</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -141,13 +141,11 @@
 </head>
 <body>
 
-<h1>Ring V6 – Globe Spin</h1>
+<h1>Ring V7 – Globe Spin</h1>
 
 <div class="stage">
   <svg id="canvas" viewBox="0 0 710 681" xmlns="http://www.w3.org/2000/svg"></svg>
 </div>
-
-<div id="progressDisplay" style="text-align:center;font-family:monospace;font-size:13px;color:#888;margin:6px 0">0%</div>
 
 <div class="controls">
   <div class="ring-grid">
@@ -282,8 +280,6 @@ const SRX = 353.4, SRY = 339.0;
 const DEG = Math.PI / 180;
 const STROKE_W = 3;
 
-// State: each ring has a longitude (degrees) and spin speed
-// The globe axis can be tilted
 let state = {
   axisTiltX: 0, axisTiltZ: -26,
   oSolidLon: 0,   oSolidSpn: 0,
@@ -294,20 +290,8 @@ let state = {
 
 const STATE_KEYS = Object.keys(state);
 
-// Spin accumulators (added to longitude each frame)
+// Continuous spin accumulator (no cap — loops forever)
 let spinAccum = { oSolid: 0, cSolid: 0, oDash: 0, cDash: 0 };
-
-// Total degrees each ring must travel: 1 full loop = 360°
-const TOTAL_LOOPS = 1;
-const TOTAL_DEG = TOTAL_LOOPS * 360;
-// Smoothstep ease-in-out
-function easeInOutMap(accum, total) {
-  if (accum >= total) return total;
-  const t = accum / total;
-  const s = t * t * (3 - 2 * t);
-  return s * total;
-}
-
 
 // 3D rotation helpers
 function rotX(n, a) { const c=Math.cos(a),s=Math.sin(a); return [n[0], n[1]*c-n[2]*s, n[1]*s+n[2]*c]; }
@@ -315,11 +299,7 @@ function rotY(n, a) { const c=Math.cos(a),s=Math.sin(a); return [n[0]*c+n[2]*s, 
 function rotZ(n, a) { const c=Math.cos(a),s=Math.sin(a); return [n[0]*c-n[1]*s, n[0]*s+n[1]*c, n[2]]; }
 function norm(n) { const l=Math.hypot(...n); return [n[0]/l, n[1]/l, n[2]/l]; }
 
-// Compute a ring's frame: normal + stable basis vectors (u, v).
-// By rotating the initial basis through the same chain, the basis is
-// always continuous — no singularity switching.
 function ringFrame(lonDeg, latDeg, axisTiltXDeg, axisTiltZDeg) {
-  // Start: ring in XY plane, normal along Z
   let n = [0, 0, 1];
   let u = [1, 0, 0];
   let v = [0, 1, 0];
@@ -329,7 +309,6 @@ function ringFrame(lonDeg, latDeg, axisTiltXDeg, axisTiltZDeg) {
   const axR  = axisTiltXDeg * DEG;
   const azR  = axisTiltZDeg * DEG;
 
-  // Apply same rotation chain to all three vectors
   n = rotX(n, latR); u = rotX(u, latR); v = rotX(v, latR);
   n = rotY(n, lonR); u = rotY(u, lonR); v = rotY(v, lonR);
   n = rotX(n, axR);  u = rotX(u, axR);  v = rotX(v, axR);
@@ -338,7 +317,6 @@ function ringFrame(lonDeg, latDeg, axisTiltXDeg, axisTiltZDeg) {
   return { normal: n, ux: u[0], uy: u[1], uz: u[2], vx: v[0], vy: v[1], vz: v[2] };
 }
 
-// Project ring frame to 2D ellipse parameters
 function projectRing(frame) {
   const { ux, uy, vx, vy } = frame;
 
@@ -355,11 +333,8 @@ function projectRing(frame) {
   return { rx:Math.sqrt(l1), ry:Math.sqrt(Math.max(0,l2)), angle:angle*180/Math.PI };
 }
 
-// SVG elements
 let els = {};
 
-// Build SVG paths for a dashed ring, split into front/back relative to
-// the centre solid's normal (for back-face culling of the mask).
 function buildDashPaths(frame, dashDeg, gapDeg, cSolidNormal) {
   const { ux, uy, uz, vx, vy, vz } = frame;
   const stepDeg = dashDeg + gapDeg;
@@ -370,11 +345,8 @@ function buildDashPaths(frame, dashDeg, gapDeg, cSolidNormal) {
   for (let i = 0; i < numDashes; i++) {
     const startDeg = i * stepDeg;
     const endDeg = startDeg + dashDeg;
-    // Check midpoint Z depth relative to centre solid plane
     const midT = ((startDeg + endDeg) / 2) * DEG;
-    const mz = uz * Math.cos(midT) + vz * Math.sin(midT);
-    // Dot with centre solid normal: positive = facing camera (front)
-    const dot = mz * cSolidNormal[2]
+    const dot = (uz * Math.cos(midT) + vz * Math.sin(midT)) * cSolidNormal[2]
               + (ux * Math.cos(midT) + vx * Math.sin(midT)) * cSolidNormal[0]
               + (uy * Math.cos(midT) + vy * Math.sin(midT)) * cSolidNormal[1];
 
@@ -401,7 +373,6 @@ function buildSVG() {
   canvas.innerHTML = '';
   const stroke = '#fff';
 
-  // Defs: mask (centre solid hides dashed behind it)
   const defs = document.createElementNS(SVG_NS, 'defs');
 
   const mask = document.createElementNS(SVG_NS, 'mask');
@@ -421,10 +392,8 @@ function buildSVG() {
 
   canvas.appendChild(defs);
 
-  // Outer solid
   els.oSolid = makeSolidEl(stroke);
 
-  // Back-facing dashes (masked by centre solid)
   els.oDashBackG = document.createElementNS(SVG_NS, 'g');
   els.oDashBackG.setAttribute('mask', 'url(#centerMask)');
   els.oDashBack = makeDashEl(stroke);
@@ -437,10 +406,8 @@ function buildSVG() {
   els.cDashBackG.appendChild(els.cDashBack);
   canvas.appendChild(els.cDashBackG);
 
-  // Centre solid (on top of back dashes)
   els.cSolid = makeSolidEl(stroke);
 
-  // Front-facing dashes (drawn on top of centre solid, no mask)
   els.oDashFront = makeDashEl(stroke);
   canvas.appendChild(els.oDashFront);
 
@@ -474,66 +441,48 @@ function setProj(el, proj) {
   el.setAttribute('transform', `rotate(${proj.angle} ${CX} ${CY})`);
 }
 
-// Animation
 let lastTime = 0;
 function animate(timestamp) {
   if (!lastTime) lastTime = timestamp;
   const dt = Math.min((timestamp - lastTime) / 1000, 0.1);
   lastTime = timestamp;
 
-  // Advance spin accumulators (capped at TOTAL_DEG)
-  if (spinAccum.oSolid < TOTAL_DEG) spinAccum.oSolid = Math.min(TOTAL_DEG, spinAccum.oSolid + Math.abs(state.oSolidSpn) * 30 * dt);
-  if (spinAccum.cSolid < TOTAL_DEG) spinAccum.cSolid = Math.min(TOTAL_DEG, spinAccum.cSolid + Math.abs(state.cSolidSpn) * 30 * dt);
-  if (spinAccum.oDash  < TOTAL_DEG) spinAccum.oDash  = Math.min(TOTAL_DEG, spinAccum.oDash  + Math.abs(state.oDashSpn)  * 30 * dt);
-  if (spinAccum.cDash  < TOTAL_DEG) spinAccum.cDash  = Math.min(TOTAL_DEG, spinAccum.cDash  + Math.abs(state.cDashSpn)  * 30 * dt);
+  // Linear accumulation — no cap, loops forever
+  spinAccum.oSolid += Math.abs(state.oSolidSpn) * 30 * dt;
+  spinAccum.cSolid += Math.abs(state.cSolidSpn) * 30 * dt;
+  spinAccum.oDash  += Math.abs(state.oDashSpn)  * 30 * dt;
+  spinAccum.cDash  += Math.abs(state.cDashSpn)  * 30 * dt;
 
-  // Apply ease-out mapping and direction
-  const oSolidEased = easeInOutMap(spinAccum.oSolid, TOTAL_DEG) * Math.sign(state.oSolidSpn || 1);
-  const oDashEased  = easeInOutMap(spinAccum.oDash,  TOTAL_DEG) * Math.sign(state.oDashSpn  || 1);
-  const cDashEased  = easeInOutMap(spinAccum.cDash,  TOTAL_DEG) * Math.sign(state.cDashSpn  || 1);
-  const cSolidEased = easeInOutMap(spinAccum.cSolid, TOTAL_DEG) * Math.sign(state.cSolidSpn || 1);
+  // Direct linear mapping (no easing)
+  const oSolidDeg = spinAccum.oSolid * Math.sign(state.oSolidSpn || 1);
+  const oDashDeg  = spinAccum.oDash  * Math.sign(state.oDashSpn  || 1);
+  const cDashDeg  = spinAccum.cDash  * Math.sign(state.cDashSpn  || 1);
+  const cSolidDeg = spinAccum.cSolid * Math.sign(state.cSolidSpn || 1);
 
-  // Update progress display
-  const maxAccum = Math.max(spinAccum.oSolid, spinAccum.cSolid, spinAccum.oDash, spinAccum.cDash);
-  const pct = TOTAL_DEG > 0 ? maxAccum / TOTAL_DEG * 100 : 0;
-  document.getElementById('progressDisplay').textContent = Math.round(pct) + '%';
-
-  // Compute effective longitudes
-  const oSolidLon = state.oSolidLon + oSolidEased;
-  const cSolidLon = state.cSolidLon + Math.sin(cSolidEased * DEG) * state.cSolidAmp;
-  const oDashLon  = state.oDashLon  + oDashEased;
-  const cDashLat  = state.cDashLat  + cDashEased;
+  const oSolidLon = state.oSolidLon + oSolidDeg;
+  const cSolidLon = state.cSolidLon + Math.sin(cSolidDeg * DEG) * state.cSolidAmp;
+  const oDashLon  = state.oDashLon  + oDashDeg;
+  const cDashLat  = state.cDashLat  + cDashDeg;
 
   const ax = state.axisTiltX;
   const az = state.axisTiltZ;
 
-  // Compute ring frames (normal + stable basis vectors)
   const oSolidF = ringFrame(oSolidLon, 0, ax, az);
   const cSolidF = ringFrame(cSolidLon, 0, ax, az);
   const oDashF  = ringFrame(oDashLon,  state.oDashLat, ax, az);
   const cDashF  = ringFrame(state.cDashLon, cDashLat, ax, az);
 
-  // Project and render
   const oSolidP = projectRing(oSolidF);
   setProj(els.oSolid, oSolidP);
 
-  // Centre solid + mask
   const cSolidP = projectRing(cSolidF);
   setProj(els.cSolid, cSolidP);
   setProj(els.maskEllipse, cSolidP);
 
-  // Dashed rings: split into front/back relative to centre solid normal
   const cNorm = cSolidF.normal;
 
-  // Auto-change swing: smoothstep ramp from 20° to 90° over 50–60%
-  if (pct <= 50) state.cSolidAmp = 20;
-  else if (pct >= 60) state.cSolidAmp = 90;
-  else {
-    const r = (pct - 50) / 10;
-    state.cSolidAmp = 20 + 70 * r * r * (3 - 2 * r);
-  }
-  // Auto-toggle BFC based on progress: on at 39%, off at 72%
-  const bfc = pct >= 39 && pct < 72;
+  // BFC controlled by slider
+  const bfc = state.cSolidBFC >= 1;
 
   if (bfc) {
     const oDashSplit = buildDashPaths(oDashF, state.oDashLen, state.oDashGap, cNorm);
@@ -543,7 +492,6 @@ function animate(timestamp) {
     els.oDashFront.setAttribute('d', oDashSplit.front);
     els.cDashFront.setAttribute('d', cDashSplit.front);
   } else {
-    // No backface culling: all dashes behind centre solid (masked), none on top
     const oAll = buildDashPaths(oDashF, state.oDashLen, state.oDashGap, cNorm);
     const cAll = buildDashPaths(cDashF, state.cDashLen, state.cDashGap, cNorm);
     els.oDashBack.setAttribute('d', [oAll.back, oAll.front].filter(Boolean).join(' '));
@@ -552,7 +500,6 @@ function animate(timestamp) {
     els.cDashFront.setAttribute('d', '');
   }
 
-  // Toggle mask on/off
   const maskOn = state.cSolidMask >= 1;
   els.oDashBackG.setAttribute('mask', maskOn ? 'url(#centerMask)' : 'none');
   els.cDashBackG.setAttribute('mask', maskOn ? 'url(#centerMask)' : 'none');
@@ -590,7 +537,7 @@ document.getElementById('copyStateBtn').addEventListener('click', () => {
 });
 
 // Saved presets (localStorage)
-const STORAGE_KEY = 'dd-ring-v6-presets';
+const STORAGE_KEY = 'dd-ring-v7-presets';
 
 function loadSaved() {
   try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }

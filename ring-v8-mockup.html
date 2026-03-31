@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Ring V6 – Mockup</title>
+<title>Ring V8 – Mockup</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -50,14 +50,17 @@ let state = {
 };
 
 let spinAccum = { oSolid: 0, cSolid: 0, oDash: 0, cDash: 0 };
+let loopCount = 0;
+const REPLAY_COUNT = 2;
 
 const TOTAL_LOOPS = 1;
 const TOTAL_DEG = TOTAL_LOOPS * 360;
+// Softened smoothstep: 90% smoothstep + 10% linear so velocity never hits zero
 function easeInOutMap(accum, total) {
   if (accum >= total) return total;
   const t = accum / total;
   const s = t * t * (3 - 2 * t);
-  return s * total;
+  return (0.85 * s + 0.15 * t) * total;
 }
 
 function rotX(n, a) { const c=Math.cos(a),s=Math.sin(a); return [n[0], n[1]*c-n[2]*s, n[1]*s+n[2]*c]; }
@@ -160,7 +163,6 @@ function buildSVG() {
 
   els.oSolid = makeSolidEl(stroke);
 
-  // Back-facing dashes (masked by centre solid)
   els.oDashBackG = document.createElementNS(SVG_NS, 'g');
   els.oDashBackG.setAttribute('mask', 'url(#centerMask)');
   els.oDashBack = makeDashEl(stroke);
@@ -173,10 +175,8 @@ function buildSVG() {
   els.cDashBackG.appendChild(els.cDashBack);
   canvas.appendChild(els.cDashBackG);
 
-  // Centre solid (on top of back dashes)
   els.cSolid = makeSolidEl(stroke);
 
-  // Front-facing dashes (on top of centre solid, no mask)
   els.oDashFront = makeDashEl(stroke);
   canvas.appendChild(els.oDashFront);
 
@@ -249,6 +249,12 @@ function animate(timestamp) {
   const cNorm = cSolidF.normal;
   const maxAccum = Math.max(spinAccum.oSolid, spinAccum.cSolid, spinAccum.oDash, spinAccum.cDash);
   const pct = TOTAL_DEG > 0 ? maxAccum / TOTAL_DEG * 100 : 0;
+
+  // Replay: reset accumulators when a loop finishes
+  if (pct >= 100 && loopCount < REPLAY_COUNT - 1) {
+    spinAccum = { oSolid: 0, cSolid: 0, oDash: 0, cDash: 0 };
+    loopCount++;
+  }
 
   if (pct <= 50) state.cSolidAmp = 20;
   else if (pct >= 60) state.cSolidAmp = 90;
